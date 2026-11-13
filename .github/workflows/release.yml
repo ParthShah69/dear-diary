@@ -30,19 +30,6 @@ jobs:
           name: android-apks
           path: build/app/outputs/flutter-apk/*.apk
           if-no-files-found: error
-      - name: Publish GitHub release
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          name: Dear Diary ${{ github.ref_name }} (prototype)
-          generate_release_notes: true
-          body: |
-            Android test APKs are attached below.
-
-            **Prototype only:** this build is not a secure or production messaging app. Demo PINs and diary/chat data are stored unencrypted locally. Do not use real or sensitive data.
-
-            The iOS job is an unsigned build artifact. It cannot be installed on an iPhone until signed with an Apple development team and provisioning profile.
-          files: build/app/outputs/flutter-apk/*.apk
 
   ios:
     name: iOS unsigned build (macOS)
@@ -55,12 +42,42 @@ jobs:
           cache: true
       - run: flutter pub get
       - run: flutter build ios --release --no-codesign
-      - name: Package unsigned iOS app
+      - name: Package unsigned iOS IPA
         run: |
-          mkdir -p build/ios/artifacts
-          ditto -c -k --sequesterRsrc --keepParent build/ios/iphoneos/Runner.app build/ios/artifacts/dear-diary-ios-unsigned.zip
+          mkdir -p build/ios/package/Payload
+          ditto build/ios/iphoneos/Runner.app build/ios/package/Payload/Runner.app
+          (cd build/ios/package && /usr/bin/zip -qry ../dear-diary-ios-unsigned.ipa Payload)
       - uses: actions/upload-artifact@v4
         with:
-          name: ios-unsigned-app
-          path: build/ios/artifacts/dear-diary-ios-unsigned.zip
+          name: ios-unsigned-ipa
+          path: build/ios/dear-diary-ios-unsigned.ipa
           if-no-files-found: error
+
+  release:
+    name: Publish test release
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [android, ios]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: android-apks
+          path: dist/android
+      - uses: actions/download-artifact@v4
+        with:
+          name: ios-unsigned-ipa
+          path: dist/ios
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: Dear Diary ${{ github.ref_name }} (prototype)
+          prerelease: true
+          generate_release_notes: true
+          body: |
+            Android test APKs and an unsigned iOS IPA are attached.
+
+            **iPhone test:** the IPA is not signed. It cannot be opened directly on an iPhone. On Windows, you can use the official AltServer/AltStore workflow to sign and sideload it with your Apple Account. Free sideloaded builds expire after 7 days and need refreshing. Never share your Apple Account password with anyone; enter it only into software you have chosen to trust.
+
+            **Prototype only:** this build is not a secure or production messaging app. Demo PINs and diary/chat data are stored unencrypted locally. Do not use real or sensitive data.
+          files: |
+            dist/android/*.apk
+            dist/ios/*.ipa

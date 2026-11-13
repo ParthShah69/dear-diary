@@ -30,11 +30,11 @@ See [BACKEND_SETUP.md](BACKEND_SETUP.md) for the server and iPhone setup require
 
 ## Release builds
 
-Push a version tag such as `v1.0.0-demo` to run `.github/workflows/release.yml`. The workflow builds split-per-ABI Android APKs and attaches them to a GitHub Release. The macOS job also builds an **unsigned** iOS app archive as a workflow artifact.
+Push a version tag such as `v1.0.0-demo` to run `.github/workflows/release.yml`. The workflow builds split-per-ABI Android APKs and an **unsigned iOS IPA**, then attaches both to a GitHub pre-release.
 
 Android testers can download the APK matching their device from the repository's **Releases** page, then allow installation from that source when Android prompts. These prototype builds use the Android debug signing key and are for testing only.
 
-The iOS archive is **not installable on an iPhone**. Installing on a physical iPhone requires signing with an Apple Developer team and a provisioning profile (or distributing through TestFlight). This repo does not contain Apple signing credentials. Build and signing details are in [BACKEND_SETUP.md](BACKEND_SETUP.md).
+The iOS IPA is **not directly installable**. For personal testing from Windows, a sideloading tool such as [AltServer/AltStore](https://faq.altstore.io/altstore-classic/how-to-install-altstore-windows) can sign it using your Apple Account; free signatures expire after seven days and must be refreshed. For TestFlight distribution, an Apple Developer Program membership is required. This repo does not contain Apple signing credentials.
 
 Do not upload real diary entries, messages, photos, audio, or location data. There is no production encryption, account system, or remote chat service in this prototype.
 
