@@ -1,0 +1,66 @@
+name: Build and publish Dear Diary test release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  android:
+    name: Android APKs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter build apk --release --split-per-abi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-apks
+          path: build/app/outputs/flutter-apk/*.apk
+          if-no-files-found: error
+      - name: Publish GitHub release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Dear Diary ${{ github.ref_name }} (prototype)
+          generate_release_notes: true
+          body: |
+            Android test APKs are attached below.
+
+            **Prototype only:** this build is not a secure or production messaging app. Demo PINs and diary/chat data are stored unencrypted locally. Do not use real or sensitive data.
+
+            The iOS job is an unsigned build artifact. It cannot be installed on an iPhone until signed with an Apple development team and provisioning profile.
+          files: build/app/outputs/flutter-apk/*.apk
+
+  ios:
+    name: iOS unsigned build (macOS)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter build ios --release --no-codesign
+      - name: Package unsigned iOS app
+        run: |
+          mkdir -p build/ios/artifacts
+          ditto -c -k --sequesterRsrc --keepParent build/ios/iphoneos/Runner.app build/ios/artifacts/dear-diary-ios-unsigned.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ios-unsigned-app
+          path: build/ios/artifacts/dear-diary-ios-unsigned.zip
+          if-no-files-found: error
