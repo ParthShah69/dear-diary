@@ -36,6 +36,7 @@ class _Note {
 class _DiaryPageState extends State<DiaryPage> with WidgetsBindingObserver {
   static const _storageKey = 'dear_diary_notes_v1';
   final _editor = TextEditingController();
+  final _search = TextEditingController();
   final _focus = FocusNode();
   final List<_Note> _notes = [];
   SharedPreferences? _prefs;
@@ -43,6 +44,7 @@ class _DiaryPageState extends State<DiaryPage> with WidgetsBindingObserver {
   _Note? _selected;
   bool _loading = true;
   bool _switching = false;
+  String _searchQuery = '';
   int _titleTaps = 0;
   DateTime? _firstTap;
 
@@ -128,6 +130,42 @@ class _DiaryPageState extends State<DiaryPage> with WidgetsBindingObserver {
     _focus.requestFocus();
   }
 
+  void _deleteNote(_Note note) {
+    final index = _notes.indexWhere((item) => item.id == note.id);
+    if (index < 0) return;
+    final wasSelected = _selected?.id == note.id;
+    setState(() {
+      _notes.removeAt(index);
+      if (wasSelected) {
+        _selected = null;
+        if (_notes.isNotEmpty) {
+          _select(_notes.first);
+        } else {
+          _editor.clear();
+        }
+      }
+    });
+    _persist();
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: const Text('Diary entry deleted'),
+          action: SnackBarAction(
+            label: 'Undo',
+            onPressed: () {
+              if (!mounted || _notes.any((item) => item.id == note.id)) return;
+              setState(() {
+                _notes.insert(index.clamp(0, _notes.length).toInt(), note);
+                if (wasSelected) _select(note);
+              });
+              _persist();
+            },
+          ),
+        ),
+      );
+  }
+
   void _tapTitle() {
     final now = DateTime.now();
     if (_firstTap == null ||
@@ -155,6 +193,7 @@ class _DiaryPageState extends State<DiaryPage> with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     _persist();
     _editor.dispose();
+    _search.dispose();
     _focus.dispose();
     super.dispose();
   }
@@ -180,6 +219,14 @@ class _DiaryPageState extends State<DiaryPage> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     const ink = Color(0xff352d2b);
+    final visibleNotes =
+        ([..._notes]..sort((a, b) => b.updatedAt.compareTo(a.updatedAt)))
+            .where(
+              (note) =>
+                  _searchQuery.isEmpty ||
+                  note.text.toLowerCase().contains(_searchQuery),
+            )
+            .toList();
     return Scaffold(
       backgroundColor: const Color(0xfff8f5f1),
       body: SafeArea(
@@ -339,56 +386,92 @@ class _DiaryPageState extends State<DiaryPage> with WidgetsBindingObserver {
                                 ),
                               ),
                               const SizedBox(height: 10),
-                              ...([..._notes]..sort(
-                                    (a, b) =>
-                                        b.updatedAt.compareTo(a.updatedAt),
-                                  ))
-                                  .map(
-                                    (note) => ListTile(
-                                      contentPadding:
-                                          const EdgeInsets.symmetric(
-                                            horizontal: 4,
-                                          ),
-                                      leading: const CircleAvatar(
-                                        backgroundColor: Color(0xffeee4dd),
-                                        child: Icon(
-                                          Icons.menu_book_outlined,
-                                          color: Color(0xff997b6f),
-                                          size: 20,
+                              TextField(
+                                controller: _search,
+                                onChanged: (value) => setState(
+                                  () =>
+                                      _searchQuery = value.trim().toLowerCase(),
+                                ),
+                                decoration: InputDecoration(
+                                  prefixIcon: const Icon(Icons.search_rounded),
+                                  hintText: 'Search diary entries',
+                                  suffixIcon: _searchQuery.isEmpty
+                                      ? null
+                                      : IconButton(
+                                          tooltip: 'Clear search',
+                                          onPressed: () {
+                                            _search.clear();
+                                            setState(() => _searchQuery = '');
+                                          },
+                                          icon: const Icon(Icons.close_rounded),
                                         ),
-                                      ),
-                                      title: Text(
-                                        note.text.trim().isEmpty
-                                            ? 'A new page'
-                                            : note.text
-                                                  .trim()
-                                                  .split('\n')
-                                                  .first,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                          color: ink,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                      subtitle: Text(
-                                        _date(note.updatedAt),
-                                        style: const TextStyle(
-                                          color: Color(0xff9e8f87),
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                      trailing: note.id == _selected?.id
-                                          ? const Icon(
-                                              Icons.check_circle,
-                                              size: 17,
-                                              color: Color(0xffb48779),
-                                            )
-                                          : null,
-                                      onTap: () =>
-                                          setState(() => _select(note)),
+                                  filled: true,
+                                  fillColor: Colors.white,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              if (visibleNotes.isEmpty)
+                                const Padding(
+                                  padding: EdgeInsets.all(16),
+                                  child: Text('No matching diary entries.'),
+                                ),
+                              ...visibleNotes.map(
+                                (note) => ListTile(
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 4,
+                                  ),
+                                  leading: const CircleAvatar(
+                                    backgroundColor: Color(0xffeee4dd),
+                                    child: Icon(
+                                      Icons.menu_book_outlined,
+                                      color: Color(0xff997b6f),
+                                      size: 20,
                                     ),
                                   ),
+                                  title: Text(
+                                    note.text.trim().isEmpty
+                                        ? 'A new page'
+                                        : note.text.trim().split('\n').first,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: ink,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  subtitle: Text(
+                                    _date(note.updatedAt),
+                                    style: const TextStyle(
+                                      color: Color(0xff9e8f87),
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  trailing: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      if (note.id == _selected?.id)
+                                        const Icon(
+                                          Icons.check_circle,
+                                          size: 17,
+                                          color: Color(0xffb48779),
+                                        ),
+                                      IconButton(
+                                        tooltip: 'Delete entry',
+                                        onPressed: () => _deleteNote(note),
+                                        icon: const Icon(
+                                          Icons.delete_outline_rounded,
+                                          color: Color(0xff9a8177),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  onTap: () => setState(() => _select(note)),
+                                ),
+                              ),
                             ],
                           ),
                   ),
@@ -398,4 +481,3 @@ class _DiaryPageState extends State<DiaryPage> with WidgetsBindingObserver {
     );
   }
 }
-

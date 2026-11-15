@@ -1,23 +1,26 @@
 # Dear Diary — mobile prototype
 
-This repository contains a local UI prototype for Android and iOS. It is not a secure messaging app: diary notes, messages, and configurable demo PINs are stored unencrypted on the device. Use sample content only.
+This repository contains a Flutter prototype for Android and iOS. The diary and PINs are local and unencrypted. The hidden conversation flow includes Supabase email/password accounts, a development-only username/password mode, and the first online text-chat implementation. It still needs the project's SQL migration and Realtime publication configured before two accounts can communicate. Message and diary text are not end-to-end encrypted. Use sample content only.
 
 ## Try the prototype
 
-- Enter `000000` for the diary or `111111` for the local conversation preview.
+- Enter `000000` for the diary or `111111` for the conversation area.
 - In the diary, tap the title six times within three seconds to open PIN settings. Changing either PIN requires its current PIN. To open the conversation from that dialog, select Conversation PIN, enter its current PIN, and tap Open.
-- The conversation preview has locally stored draft text, message editing/history, search, and an Instant Lock button that returns to the most recently opened diary entry. It does not send messages to another user.
+- The online chat supports username friend requests, accept/decline, one 1:1 chat per pair, text messages, server timestamps, read receipts and instant lock. Media and chat search/export are not connected to this cloud flow yet.
+- Configure a separate Supabase development project as described in [SUPABASE_DEV_SETUP.md](SUPABASE_DEV_SETUP.md), then create accounts on two devices. Sign out is inside the hidden PIN settings.
 - Backgrounding the app returns it to the PIN screen. This is a prototype lifecycle implementation, not a verified security boundary.
 
 ## Status checklist
 
 - [x] Flutter Android/iOS project, PIN routing and local PIN settings
 - [x] Diary notes, local autosave, latest-entry view
-- [x] Local chat preview, drafts, edit history, text/date search, instant return
+- [x] Supabase text chat, friend requests, sent/read receipts, realtime subscriptions
 - [ ] Encrypted local storage and hardware-backed key protection
-- [ ] Secure account system, friend requests and two-person pairing
-- [ ] Real-time server and independently verified end-to-end encryption
-- [ ] Read receipts, message delivery and real-time synchronization
+- [x] Email/password account gate, development-only username/password mode, and hidden-settings sign out
+- [x] Initial Supabase SQL schema and row-level access policies
+- [ ] Apply migration to a development project, enable Realtime, and verify two accounts across devices
+- [ ] End-to-end encryption and independent security review
+- [ ] Reliable real-device delivery/background synchronization
 - [ ] Sending/receiving encrypted audio, photos, video and stickers
 - [ ] Live location, permissions and stop controls
 - [ ] Notifications, content-free push service, device recovery
@@ -26,7 +29,7 @@ This repository contains a local UI prototype for Android and iOS. It is not a s
 - [ ] Real-device Android and iOS security and reliability review
 - [ ] Signed iOS build, Apple developer account and TestFlight setup
 
-See [BACKEND_SETUP.md](BACKEND_SETUP.md) for the server and iPhone setup requirements.
+See [SUPABASE_DEV_SETUP.md](SUPABASE_DEV_SETUP.md) for the current development account setup, and [BACKEND_SETUP.md](BACKEND_SETUP.md) for longer-term encrypted messaging and iPhone setup requirements.
 
 ## Release builds
 
@@ -36,5 +39,5 @@ Android testers can download the APK matching their device from the repository's
 
 The iOS IPA is **not directly installable**. For personal testing from Windows, a sideloading tool such as [AltServer/AltStore](https://faq.altstore.io/altstore-classic/how-to-install-altstore-windows) can sign it using your Apple Account; free signatures expire after seven days and must be refreshed. For TestFlight distribution, an Apple Developer Program membership is required. This repo does not contain Apple signing credentials.
 
-Do not upload real diary entries, messages, photos, audio, or location data. There is no production encryption, account system, or remote chat service in this prototype.
+Do not upload real diary entries or sensitive messages. Chat text is stored in Supabase plaintext and diary/PIN data is local and unencrypted. Use a disposable development project and sample data until encryption and recovery are implemented and reviewed.
 
