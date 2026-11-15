@@ -24,7 +24,7 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - name: Build Android test APKs with development account config
+      - name: Build universal Android debug APK with development account config
         env:
           DD_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
           DD_SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
@@ -32,7 +32,6 @@ jobs:
           test -n "$DD_SUPABASE_URL" || (echo "Set repository Actions variable SUPABASE_URL" && exit 1)
           test -n "$DD_SUPABASE_ANON_KEY" || (echo "Set repository Actions variable SUPABASE_ANON_KEY" && exit 1)
           flutter build apk --debug --dart-define="SUPABASE_URL=$DD_SUPABASE_URL" --dart-define="SUPABASE_ANON_KEY=$DD_SUPABASE_ANON_KEY" --dart-define=USERNAME_ONLY_AUTH=true
-          flutter build apk --release --split-per-abi --dart-define="SUPABASE_URL=$DD_SUPABASE_URL" --dart-define="SUPABASE_ANON_KEY=$DD_SUPABASE_ANON_KEY" --dart-define=USERNAME_ONLY_AUTH=true
       - uses: actions/upload-artifact@v4
         with:
           name: android-test-apks
@@ -88,7 +87,7 @@ jobs:
           prerelease: true
           generate_release_notes: true
           body: |
-            A universal Android debug APK, split Android release APKs and an unsigned iOS IPA are attached.
+            A universal Android debug APK and an unsigned iOS IPA are attached.
 
             **iPhone test:** the IPA is not signed. It cannot be opened directly on an iPhone. On Windows, you can use the official AltServer/AltStore workflow to sign and sideload it with your Apple Account. Free sideloaded builds expire after 7 days and need refreshing. Never share your Apple Account password with anyone; enter it only into software you have chosen to trust.
 
